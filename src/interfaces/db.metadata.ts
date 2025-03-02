@@ -6,7 +6,19 @@ export interface ColumnMetaData {
     unique ?: boolean;
 }
 
+export interface OneToManyMetaData {
+    joinColumn:string;
+    entity:Function
+} 
+
+export interface ManyToOneMetaData {
+    joinColumn:string;
+    entity:Function
+} 
+
 export interface TableMetadata {
     table: string;
     columns: ColumnMetaData[]; 
+    oneToManyRelations : OneToManyMetaData[],
+    manyToOneRelations : ManyToOneMetaData[]
 }

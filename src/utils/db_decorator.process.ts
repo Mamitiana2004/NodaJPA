@@ -17,10 +17,14 @@ export const getTableStructure = (constructor: Function): TableMetadata => {
     }
 
     const columns = Reflect.getMetadata('columns', constructor) || [];
+    const oneToManys = Reflect.getMetadata('onetomany',constructor);
+    const manyToOnes = Reflect.getMetadata('manytoone',constructor);
 
     return {
         table: tableName,
         columns: columns,
+        oneToManyRelations:oneToManys,
+        manyToOneRelations:manyToOnes
     };
 }
 

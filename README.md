@@ -22,14 +22,14 @@ npm install nodajpa
 
 ### 📌 Configuration de la base de données
 
-Après l'installation, vous devez créer un fichier `database.config` dans la racine de votre projet avec les informations suivantes :
+Après l'installation, configurez votre environnement `.env` dans votre projet avec les informations suivantes :
 
 ```
-user=postgres
-password=pass
-database=tdr
-host=localhost
-port=5432
+NODAJPA_HOST=localhost
+NODAJPA_PORT=5432
+NODAJPA_USER=postgres
+NODAJPA_PASSWORD=pass
+NODAJPA_NAME=test_nodajpa
 ```
 
 ⚠️ **Actuellement, NodaJPA ne supporte que PostgreSQL. D'autres bases de données seront ajoutées prochainement.**
@@ -41,21 +41,45 @@ port=5432
 ### 1️⃣ Définir une entité
 
 ```ts
-import { Column, Entity, Table } from "nodajpa";
+import { Column, Entity, ManyToOne, Table } from "nodajpa";
+
+
+@Table("genre")
+class Genre extends Entity{
+    @Column({primary_key:true,autoincrement:true})
+    id:number;
+
+    @Column()
+    nom:string;
+
+    constructor(id:number,nom:string){
+        super();
+        this.id = id;
+        this.nom= nom;
+    }
+}
+
 
 @Table('utilisateur')
 class User extends Entity {
     @Column({ name: 'id', primary_key: true, autoincrement: true })
     id: number;
 
-    @Column({ name: 'identifiant' })
+
+    @Column()
     identifiant: string;
 
-    @Column({ name: "password" })
+    // JoinColumn est le nom de la foreign Key
+    // entity est la classe Entity dont la foreign key fait references
+    @ManyToOne({joinColumn:"id_genre",entity:Genre})
+    genre:Genre;
+
+    @Column()
     password: string;
 
-    constructor(id: number, identifiant: string, password: string) {
+    constructor(id: number, identifiant: string, password: string,genre:Genre) {
         super();
+        this.genre = genre ?? null;
         this.id = id ?? 0;
         this.identifiant = identifiant ?? '';
         this.password = password ?? '';
@@ -65,14 +89,14 @@ class User extends Entity {
 
 ### 2️⃣ Configurer la connexion
 
-Après l'installation, vous devez créer un fichier `database.config` dans la racine de votre projet avec les informations suivantes :
+Après l'installation, configurez votre environnement `.env` dans votre projet avec les informations suivantes :
 
 ```
-user=postgres
-password=pass
-database=tdr
-host=localhost
-port=5432
+NODAJPA_HOST=localhost
+NODAJPA_PORT=5432
+NODAJPA_USER=postgres
+NODAJPA_PASSWORD=pass
+NODAJPA_NAME=test_nodajpa
 ```
 
 ⚠️ **Actuellement, NodaJPA ne supporte que PostgreSQL. D'autres bases de données seront ajoutées prochainement.**
@@ -86,12 +110,47 @@ const users = await User.getAll();
 console.log(users);
 ```
 
+**Resultat**
+
+    [
+        [class User extends Entity]{
+            id: 1,
+            identifiant: 'jean',
+            password: 'jean1234',
+            genre: [class Genre extends Entity] { 
+                id: 1, 
+                nom: 'm' 
+            }
+        },
+        [class User extends Entity]{
+            id: 2,
+            identifiant: 'jeanne',
+            password: 'jeanne564',
+            genre: [class Genre extends Entity] { 
+                id: 2, 
+                nom: 'f' 
+            }
+        }
+    ]
+
 #### 🔍 Récupérer une entrée par clé primaire
 
 ```ts
 const user = await User.getByPrimaryKey(1);
 console.log(user);
 ```
+
+**resultat**
+
+    [class User extends Entity]{
+        id: 1,
+        identifiant: 'jean',
+        password: 'jean1234',
+        genre: [class Genre extends Entity] { 
+            id: 1, 
+            nom: 'm' 
+        }
+    }
 
 #### 🔄 Sauvegarder une nouvelle entrée
 
@@ -127,7 +186,6 @@ await User.executeQuery("UPDATE utilisateur SET password = $1 WHERE identifiant 
 📌 **Repositories** - CRUD simplifié pour chaque entité\
 
 
-
 ---
 
 ## 📜 Roadmap
@@ -145,3 +203,4 @@ Ce projet est sous licence **MIT**.
 📌 **Auteur** : [Mamitiana Faneva](https://mamitiana-faneva.pages.dev/)
 
 📢 **Contributions bienvenues !** 🚀
+

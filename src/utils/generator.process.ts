@@ -23,9 +23,9 @@ export const insertSQL = (constructor: Function): string => {
     const tableStructure = getTableStructure(constructor);
     const tableName = tableStructure.table;
     const columns = tableStructure.columns;
-    const insertColumns = columns.filter((column:any) => !column.autoincrement);
-    const columnNames = insertColumns.map((column:any) => column.name).join(', ');
-    const columnValues = insertColumns.map((column:any) => (this as any)[column.propertyKey]);
+    const insertColumns = columns.filter((column) => !column.autoincrement);
+    const columnNames = insertColumns.map((column) => column.name).join(', ');
+    const columnValues = insertColumns.map((column) => (this as any)[column.propertyKey]);
     const qurey = `
         INSERT INTO ${tableName} (${columnNames})
         VALUES (${columnValues.map((_, index) => `$${index + 1}`).join(', ')})
@@ -39,7 +39,7 @@ export const updateSQL = (constructor: Function): string => {
     const tableName = tableStructure.table;
     const pkColumn = getPrimaryKey(constructor);
     const columns = tableStructure.columns;
-    const updateColumn = columns.filter((column:any) => !column.primary_key);
+    const updateColumn = columns.filter((column) => !column.primary_key);
     const query = `UPDATE ${tableName} SET ${updateColumn.map((column, index) => {
         if (index == 0) {
             return (`${column.name} = $${index + 1}`);
@@ -55,7 +55,7 @@ export const updateAllSQL = (constructor: Function): string => {
     const tableStructure = getTableStructure(constructor);
     const tableName = tableStructure.table;
     const columns = tableStructure.columns;
-    const updateColumn = columns.filter((column:any) => !column.primary_key);
+    const updateColumn = columns.filter((column) => !column.primary_key);
     const query = `UPDATE ${tableName} SET ${updateColumn.map((column, index) => {
         if (index == 0) {
             return (`${column.name} = $${index + 1}`);
@@ -104,7 +104,7 @@ export const updateBySQL = (constructor: Function, ...columnNames: string[]): st
     const tableStructure = getTableStructure(constructor);
     const tableName = tableStructure.table;
     const columns = tableStructure.columns;
-    const updateColumn = columns.filter((column:any) => !column.primary_key);
+    const updateColumn = columns.filter((column) => !column.primary_key);
 
     const setClause = updateColumn.map((column, index) => `${column.name} = $${index + 1}`).join(', ');
     const whereClause = columnNames.map((column, index) => {

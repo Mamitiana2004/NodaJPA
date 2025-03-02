@@ -9,10 +9,14 @@ export abstract class Entity {
         return getTableStructure(this);
     }
 
-    static mapDataToEntity(data: Record<string, any>): (typeof Entity) {
-        const entity = this;
-        const columns = this.getTableMetadata().columns;
+    static async mapDataToEntity<T extends Entity>(data: Record<string, any>): Promise<T> {
+        const entity = this as unknown as T;
+        const columns = this.getTableMetadata().columns || [];
+        const manyToOneRelations = this.getTableMetadata().manyToOneRelations || [];
+        const oneToManyRelations = this.getTableMetadata().oneToManyRelations || [];
 
+
+        // Mapping des colonnes simples
         columns.forEach((column: any) => {
             const value = data[column.name];
             if (value !== undefined) {
@@ -20,8 +24,71 @@ export abstract class Entity {
             }
         });
 
+        if (manyToOneRelations.length !== 0) {
+            await Promise.all(
+                manyToOneRelations.map(async (manyToOneRelation: any) => {
+                    const joinColumn = manyToOneRelation.joinColumn;
+                    const joinColumnValue = data[joinColumn];
+                    const relationEntity = manyToOneRelation.entity;
+
+
+                    if (joinColumnValue !== null && joinColumnValue !== undefined) {
+                        try {
+                            const dataEntities = await relationEntity.getByPrimaryKey(joinColumnValue);
+                            if (dataEntities) {
+                                const relatedEntities = await relationEntity.mapDataToEntity(dataEntities);
+                                (entity as any)[manyToOneRelation.propertyKey] = relatedEntities;
+                            }
+                        } catch (error) {
+                            console.error(`Erreur lors du chargement de la relation manytoOne (${manyToOneRelation.propertyKey}):`, error);
+                        }
+                    }
+                }));
+        }
+
+        if (oneToManyRelations.length !== 0) {
+
+            await Promise.all(
+                oneToManyRelations.map(async (oneToManyRelation: any) => {
+                    const joinColumn = oneToManyRelation.joinColumn;
+                    const pkColumn = getPrimaryKey(this);
+                    const joinColumnValue = data[pkColumn.propertyKey];
+
+                    const relationEntity = oneToManyRelation.entity;
+
+                    if (joinColumnValue !== null && joinColumnValue !== undefined) {
+                        try {
+                            const dataEntities = await relationEntity.getAllByForeignKey(joinColumn, joinColumnValue);
+                            if (dataEntities) {
+                                const relatedEntities = await relationEntity.mapDataToEntity(dataEntities);
+                                (entity as any)[oneToManyRelation.propertyKey] = relatedEntities;
+                            }
+                        } catch (error) {
+                            console.error(`Erreur lors du chargement de la relation OneToMany (${oneToManyRelation.propertyKey}):`, error);
+                        }
+                    }
+                }))
+        }
+
+
+
         return entity;
     }
+
+    static async getAllByForeignKey<T extends Entity>(foreignKeyColumn: string, foreignKeyValue: any): Promise<T[]> {
+        const tableName = this.getTableMetadata().table;
+        const pool = await DBConfig.createInstance();
+        const query = `SELECT * FROM ${tableName} WHERE ${foreignKeyColumn} = $1`;
+
+        const { rows } = await pool.query(query, [foreignKeyValue]);
+
+        if (rows.length === 0) {
+            return [];
+        }
+
+        return Promise.all(rows.map(async (row) => await this.mapDataToEntity(row) as unknown as T));
+    }
+
 
     static async count(): Promise<number> {
         const pool = await DBConfig.createInstance();
@@ -40,21 +107,22 @@ export abstract class Entity {
         if (rows.length === 0) {
             return [];
         }
-        return rows.map((row) => this.mapDataToEntity(row) as unknown as T);
+        return Promise.all(rows.map(async (row) => await this.mapDataToEntity(row) as unknown as T));
     }
 
-    async get<T extends Entity>(...columnNames: string[]): Promise<T[]>{
+
+    async get<T extends Entity>(...columnNames: string[]): Promise<T[]> {
         const pool = await DBConfig.createInstance();
         const tableStructure = getTableStructure(this.constructor);
         const allColumns = tableStructure.columns;
-        const entityClass = this.constructor as typeof Entity; 
-        const columns = allColumns.filter((column)=> columnNames.includes(column.name));
+        const entityClass = this.constructor as typeof Entity;
+        const columns = allColumns.filter((column) => columnNames.includes(column.name));
         if (columns.length === 0) {
             return entityClass.getAll();
         }
         const query = getBySQL(this.constructor, ...columnNames);
         const columnValues = columns.map((column) => (this as any)[column.propertyKey]);
-        const {rows} = await pool.query(query,columnValues);
+        const { rows } = await pool.query(query, columnValues);
         return rows.map((row) => entityClass.mapDataToEntity(row) as unknown as T);
     }
 
@@ -62,7 +130,7 @@ export abstract class Entity {
         const pool = await DBConfig.createInstance();
         const query = getByPrimaryKeySQL(this, value);
         const { rows } = await pool.query(query);
-        return rows[0];
+        return this.mapDataToEntity(rows[0]) as unknown as T;
     }
 
     async save(): Promise<void> {
@@ -86,7 +154,7 @@ export abstract class Entity {
         await pool.query(query, columnValues);
     }
 
-    static async updateAll() : Promise<void>{
+    static async updateAll(): Promise<void> {
         const pool = await DBConfig.createInstance();
         const query = updateSQL(this.constructor);
         await pool.query(query);
@@ -122,12 +190,12 @@ export abstract class Entity {
     }
 
 
-    static async executeQuery(query:string ,...data:any[]):Promise<any> {
+    static async executeQuery(query: string, ...data: any[]): Promise<any> {
         const pool = await DBConfig.createInstance();
         if (data.length === 0) {
             await pool.query(query);
             return;
         }
-        await pool.query(query,data);
+        await pool.query(query, data);
     }
 }

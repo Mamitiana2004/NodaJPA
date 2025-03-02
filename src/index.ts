@@ -1,2 +1,2 @@
 export { Entity } from "./utils/Entity";
-export { Table, Column } from "./decorators/db.decorator";
+export { Table, Column, OneToMany, ManyToOne } from "./decorators/db.decorator";
