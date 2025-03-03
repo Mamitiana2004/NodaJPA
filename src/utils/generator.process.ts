@@ -23,6 +23,7 @@ export const insertSQL = (constructor: Function): string => {
     const tableStructure = getTableStructure(constructor);
     const tableName = tableStructure.table;
     const columns = tableStructure.columns;
+    const manyColumns = tableStructure.manyToOneRelations;
     const insertColumns = columns.filter((column) => !column.autoincrement);
     const columnNames = insertColumns.map((column) => column.name).join(', ');
     const columnValues = insertColumns.map((column) => (this as any)[column.propertyKey]);

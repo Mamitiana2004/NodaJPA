@@ -121,9 +121,11 @@ export abstract class Entity {
             return entityClass.getAll();
         }
         const query = getBySQL(this.constructor, ...columnNames);
+        
         const columnValues = columns.map((column) => (this as any)[column.propertyKey]);
+        
         const { rows } = await pool.query(query, columnValues);
-        return rows.map((row) => entityClass.mapDataToEntity(row) as unknown as T);
+        return Promise.all(rows.map(async (row) => await entityClass.mapDataToEntity(row) as unknown as T));
     }
 
     static async getByPrimaryKey<T extends Entity>(value: any): Promise<T> {
